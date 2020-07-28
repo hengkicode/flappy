@@ -1,39 +1,3 @@
-# Flappy Learning ([Demo](http://xviniette.github.io/FlappyLearning/))
-
-Program that learns to play Flappy Bird by machine learning ([Neuroevolution](http://www.scholarpedia.org/article/Neuroevolution))
-
-![alt tag](https://github.com/xviniette/FlappyLearning/blob/gh-pages/img/flappy.png?raw=true)
-
-### [NeuroEvolution.js](http://github.com/xviniette/FlappyLearning/blob/gh-pages/Neuroevolution.js) : Utilization
-```javascript
-// Initialize
-var ne = new Neuroevolution({options});
-
-//Default options values
-var options = {
-    network:[1, [1], 1],    // Perceptron structure
-    population:50,          // Population by generation
-    elitism:0.2,            // Best networks kepts unchanged for the next generation (rate)
-    randomBehaviour:0.2,    // New random networks for the next generation (rate)
-    mutationRate:0.1,       // Mutation rate on the weights of synapses
-    mutationRange:0.5,      // Interval of the mutation changes on the synapse weight
-    historic:0,             // Latest generations saved
-    lowHistoric:false,      // Only save score (not the network)
-    scoreSort:-1,           // Sort order (-1 = desc, 1 = asc)
-    nbChild:1               // number of child by breeding
-}
-
-//Update options at any time
-ne.set({options});
-
-// Generate first or next generation
-var generation = ne.nextGeneration();
-
-//When an network is over -> save this score
-ne.networkScore(generation[x], <score = 0>);
-```
-
-You can see the NeuroEvolution integration in Flappy Bird in [Game.js](http://github.com/xviniette/FlappyLearning/blob/gh-pages/game.js).
 /**
  * Provides a set of classes and methods for handling Neuroevolution and
  * genetic algorithms.
@@ -517,4 +481,70 @@ var Neuroevolution = function (options) {
 	self.generations = new Generations();
 
 	/**
-	 * Reset and create a ne
+	 * Reset and create a new Generations object.
+	 *
+	 * @return void.
+	 */
+	self.restart = function () {
+		self.generations = new Generations();
+	}
+
+	/**
+	 * Create the next generation.
+	 *
+	 * @return Neural Network array for next Generation.
+	 */
+	self.nextGeneration = function () {
+		var networks = [];
+
+		if (self.generations.generations.length == 0) {
+			// If no Generations, create first.
+			networks = self.generations.firstGeneration();
+		} else {
+			// Otherwise, create next one.
+			networks = self.generations.nextGeneration();
+		}
+
+		// Create Networks from the current Generation.
+		var nns = [];
+		for (var i in networks) {
+			var nn = new Network();
+			nn.setSave(networks[i]);
+			nns.push(nn);
+		}
+
+		if (self.options.lowHistoric) {
+			// Remove old Networks.
+			if (self.generations.generations.length >= 2) {
+				var genomes =
+					self.generations
+					.generations[self.generations.generations.length - 2]
+					.genomes;
+				for (var i in genomes) {
+					delete genomes[i].network;
+				}
+			}
+		}
+
+		if (self.options.historic != -1) {
+			// Remove older generations.
+			if (self.generations.generations.length > self.options.historic + 1) {
+				self.generations.generations.splice(0,
+					self.generations.generations.length - (self.options.historic + 1));
+			}
+		}
+
+		return nns;
+	}
+
+	/**
+	 * Adds a new Genome with specified Neural Network and score.
+	 *
+	 * @param {network} Neural Network.
+	 * @param {score} Score value.
+	 * @return void.
+	 */
+	self.networkScore = function (network, score) {
+		self.generations.addGenome(new Genome(score, network.getSave()));
+	}
+}
